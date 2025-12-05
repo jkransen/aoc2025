@@ -1,31 +1,53 @@
 package nl.kransen.aoc2025
 
+import scala.annotation.tailrec
 import scala.io.Source
 
 object Day1 extends App {
 
   case class DialState(position: Int = 50, zeroStops: Int = 0, zeroPasses: Int = 0) {
+
+    val SIZE = 100
+
+    enum Direction:
+      case LEFT, RIGHT
+
     def rotate(rotation: String): DialState = {
       val direction = rotation.head
-      val distance = Integer.parseInt(rotation.tail)
+      val distance = rotation.tail.toInt
 
-      val newPosition = direction match {
-        case 'L' => ((position - distance) % 100 + 100) % 100
-        case 'R' => (position + distance) % 100
+      direction match {
+        case 'L' => rotate(this, distance, Direction.LEFT)
+        case 'R' => rotate(this, distance, Direction.RIGHT)
       }
+    }
 
-      val newZeroStops = if (newPosition == 0)
-        zeroStops + 1
-      else
-        zeroStops
-
-      val passesCount = countZeroPasses(position, direction, distance)
-      val adjustedPasses = if (newPosition == 0 && passesCount > 0) passesCount - 1 else passesCount
-      val newZeroPasses = adjustedPasses + zeroPasses
-
-      println(s"Moving ${rotation} from position ${position} to ${newPosition}, zero stops: ${newZeroStops}, zero passes: ${newZeroPasses}")
-
-      DialState(newPosition, newZeroStops, newZeroPasses)
+    @tailrec
+    private def rotate(state: DialState, distance: Int, direction: Direction): DialState = {
+      if (distance == 0) {
+        if (state.position == 0) {
+          state.copy(zeroStops = state.zeroStops + 1)
+        } else {
+          state
+        }
+      } else {
+        val newPosition = direction match {
+          case Direction.LEFT =>
+            if (state.position == 0) {
+              SIZE - 1
+            } else {
+              state.position - 1
+            }
+          case Direction.RIGHT =>
+            if (state.position == SIZE - 1) {
+              0
+            } else {
+              state.position + 1
+            }
+        }
+        val newZeroPasses = if (newPosition == 0) state.zeroPasses + 1 else state.zeroPasses
+        rotate(state.copy(position = newPosition, zeroPasses = newZeroPasses), distance = distance - 1, direction)
+      }
     }
   }
 
@@ -46,7 +68,9 @@ object Day1 extends App {
 
   val lines = Source.fromResource("day1_1.txt").getLines().toList
 
-  val testOutput = lines.foldLeft(DialState())((dialState, rotation) => dialState.rotate(rotation))
+  val testOutput = lines.foldLeft(DialState())((dialState, rotation) =>
+    dialState.rotate(rotation)
+  )
 
   println(s"Zero stops: ${testOutput.zeroStops}")
 
@@ -54,17 +78,4 @@ object Day1 extends App {
 
   println(s"Sum: ${testOutput.zeroStops + testOutput.zeroPasses}")
 
-  def countZeroPasses(position: Int, direction: Char, distance: Int): Int = {
-    direction match {
-      case 'L' =>
-        if (position == 0) distance / 100
-        else distance / 100 + (distance % 100 + 99 - position) / 100
-      case 'R' => (position + distance) / 100 - position / 100
-    }
-  }
-
-
-  // 6657 is too low
-  // 7243 is too high
-  // 7085 ook niet goed
 }
